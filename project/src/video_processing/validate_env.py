@@ -17,11 +17,7 @@ REQUIRED_PACKAGES = [
     ("uvicorn", "uvicorn"),
 ]
 
-OPTIONAL_PACKAGES = [
-    ("pymilvus", "pymilvus"),
-    ("paddleocr", "paddleocr"),
-    ("whisper", "openai-whisper"),
-]
+OPTIONAL_PACKAGES: list[tuple[str, str]] = []
 
 
 def parse_args():
@@ -85,7 +81,8 @@ def main():
     print_status_block("System", [f"[{'OK' if ffmpeg_ok else 'FAIL'}] ffmpeg: {ffmpeg_detail}"])
 
     print_check_group("Required Packages", REQUIRED_PACKAGES, optional=False)
-    print_check_group("Optional Packages", OPTIONAL_PACKAGES, optional=True)
+    if OPTIONAL_PACKAGES:
+        print_check_group("Optional Packages", OPTIONAL_PACKAGES, optional=True)
 
     model_ok, model_detail = check_model_path(args.model_path)
     print_status_block("Model", [f"[{'OK' if model_ok else 'WARN'}] model_path: {model_detail}"])

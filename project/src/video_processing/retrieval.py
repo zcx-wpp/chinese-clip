@@ -86,14 +86,7 @@ def _average_adjacent_similarity(similarities: list[float]) -> float:
 def aggregate_hits(
     hits: list[SearchHit],
     video_scores: dict[str, float],
-    clip_score_mode: str,
-    clip_score_top_k: int,
-    merge_gap_seconds: float,
-    temporal_consistency_threshold: float,
-    clip_avg_score_weight: float,
-    clip_temporal_consistency_weight: float,
-    clip_smoothmax_beta: float,
-    max_segments_per_video: int,
+    retrieval_config: RetrievalConfig,
     embedding_loader,
 ) -> list[dict]:
     grouped = defaultdict(list)
@@ -114,8 +107,8 @@ def aggregate_hits(
                 time_gap = hit.timestamp - current["end"]
                 semantic_similarity = float(np.dot(previous_embedding, current_embedding)) if previous_embedding is not None else -1.0
                 can_merge = (
-                    time_gap <= merge_gap_seconds
-                    and semantic_similarity >= temporal_consistency_threshold
+                    time_gap <= retrieval_config.merge_gap_seconds
+                    and semantic_similarity >= retrieval_config.temporal_consistency_threshold
                 )
 
             if current is None or not can_merge:
@@ -136,33 +129,20 @@ def aggregate_hits(
             previous_embedding = current_embedding
 
         for item in segments:
-            avg_score = _average_top_k(item["frame_scores"], clip_score_top_k)
-            smooth_score = _smoothmax_top_k(item["frame_scores"], clip_score_top_k, clip_smoothmax_beta)
+            smooth_score = _smoothmax_top_k(
+                item["frame_scores"],
+                retrieval_config.clip_score_top_k,
+                retrieval_config.clip_smoothmax_beta,
+            )
             temporal_consistency = _average_adjacent_similarity(item["adjacent_similarities"])
-            if clip_score_mode == "max":
-                clip_score = float(max(item["frame_scores"]))
-            elif clip_score_mode == "topk_average":
-                clip_score = avg_score
-            elif clip_score_mode == "smoothmax":
-                clip_score = smooth_score
-            elif clip_score_mode == "temporal_smoothmax":
-                clip_score = (
-                    clip_avg_score_weight * smooth_score
-                    + clip_temporal_consistency_weight * temporal_consistency
-                )
-            else:
-                clip_score = (
-                    clip_avg_score_weight * avg_score
-                    + clip_temporal_consistency_weight * temporal_consistency
-                )
-            item["avg_score"] = avg_score
-            item["smooth_score"] = smooth_score
-            item["temporal_consistency"] = temporal_consistency
-            item["clip_score"] = float(clip_score)
+            item["clip_score"] = float(
+                retrieval_config.clip_avg_score_weight * smooth_score
+                + retrieval_config.clip_temporal_consistency_weight * temporal_consistency
+            )
 
         segments.sort(key=lambda item: item["clip_score"], reverse=True)
         kept_segments = []
-        for item in segments[:max_segments_per_video]:
+        for item in segments[: retrieval_config.max_segments_per_video]:
             kept_segments.append(
                 {
                     "start": round(item["start"], 3),
@@ -326,26 +306,14 @@ class VideoRetriever:
 
         video_scores: dict[str, float] = {}
         for video_id, scores in video_frame_scores.items():
-            if self.retrieval_config.rerank_score_agg_mode == "topk_average":
-                video_scores[video_id] = _average_top_k(
-                    scores,
-                    self.retrieval_config.rerank_top_k_average,
-                )
-            elif self.retrieval_config.rerank_score_agg_mode == "consensus_smoothmax":
-                video_scores[video_id] = _consensus_smoothmax_top_k(
-                    scores,
-                    self.retrieval_config.rerank_top_k_average,
-                    self.retrieval_config.rerank_smoothmax_beta,
-                    self.retrieval_config.rerank_support_floor,
-                    self.retrieval_config.rerank_support_bonus_weight,
-                    self.retrieval_config.rerank_spike_penalty_weight,
-                )
-            else:
-                video_scores[video_id] = _smoothmax_top_k(
-                    scores,
-                    self.retrieval_config.rerank_top_k_average,
-                    self.retrieval_config.rerank_smoothmax_beta,
-                )
+            video_scores[video_id] = _consensus_smoothmax_top_k(
+                scores,
+                self.retrieval_config.rerank_top_k_average,
+                self.retrieval_config.rerank_smoothmax_beta,
+                self.retrieval_config.rerank_support_floor,
+                self.retrieval_config.rerank_support_bonus_weight,
+                self.retrieval_config.rerank_spike_penalty_weight,
+            )
         return video_scores, frame_scores
 
     def search(self, query: str, top_k: int | None = None) -> list[dict]:
@@ -378,14 +346,7 @@ class VideoRetriever:
         aggregated = aggregate_hits(
             hits=hits,
             video_scores=video_scores,
-            clip_score_mode=self.retrieval_config.clip_score_mode,
-            clip_score_top_k=self.retrieval_config.clip_score_top_k,
-            merge_gap_seconds=self.retrieval_config.merge_gap_seconds,
-            temporal_consistency_threshold=self.retrieval_config.temporal_consistency_threshold,
-            clip_avg_score_weight=self.retrieval_config.clip_avg_score_weight,
-            clip_temporal_consistency_weight=self.retrieval_config.clip_temporal_consistency_weight,
-            clip_smoothmax_beta=self.retrieval_config.clip_smoothmax_beta,
-            max_segments_per_video=self.retrieval_config.max_segments_per_video,
+            retrieval_config=self.retrieval_config,
             embedding_loader=self.load_frame_embedding,
         )
         return aggregated[: (top_k or self.retrieval_config.result_videos)]

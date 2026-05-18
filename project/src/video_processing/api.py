@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .config import EmbeddingConfig, PROJECT_ROOT, RetrievalConfig, VectorStoreConfig
+from .config import PROJECT_ROOT, RetrievalConfig
 from .profile_paths import default_metadata_db_path, default_output_dir, resolve_path
 
 if TYPE_CHECKING:
@@ -54,68 +54,44 @@ def build_retriever(
     metadata_db_path: Path,
     model_path: str,
     device: str = "cuda",
-    retrieval_preset: str = "current",
     video_recall_top_k: int | None = None,
     segment_recall_top_k: int | None = None,
     video_recall_candidate_pool_size: int | None = None,
     segment_recall_candidate_pool_size: int | None = None,
-    rerank_score_agg_mode: str | None = None,
     rerank_top_k_average: int | None = None,
     rerank_smoothmax_beta: float | None = None,
     clip_score_weight: float | None = None,
     motion_score_weight: float | None = None,
     rerank_segment_support_weight: float | None = None,
     rerank_genericness_penalty_weight: float | None = None,
-    vector_backend: str = "faiss",
-    milvus_uri: str = "http://127.0.0.1:19530",
-    milvus_token: str = "",
-    milvus_collection: str = "video_frame_embeddings",
 ) -> "VideoRetriever":
     from .embedding import ChineseClipEncoder
+    from .faiss_store import FaissFrameIndex
     from .metadata_store import MetadataStore
-    from .milvus_store import MilvusFrameIndex
     from .retrieval import VideoRetriever
 
-    embedding_config = EmbeddingConfig(model_path=model_path, device=device)
-    vector_config = VectorStoreConfig(
-        backend=vector_backend,
-        milvus_uri=milvus_uri,
-        milvus_token=milvus_token,
-        milvus_collection=milvus_collection,
-    )
     encoder = ChineseClipEncoder(
-        model_path=embedding_config.model_path,
-        device=embedding_config.device,
-        batch_size=embedding_config.batch_size,
+        model_path=model_path,
+        device=device,
+        batch_size=16,
     )
-    if vector_config.backend == "milvus":
-        index = MilvusFrameIndex(
-            uri=vector_config.milvus_uri,
-            token=vector_config.milvus_token,
-            collection_name=vector_config.milvus_collection,
-        )
+    index = FaissFrameIndex.load(
+        index_path=output_dir / "faiss" / "frame_index.faiss",
+        meta_path=output_dir / "faiss" / "frame_index.meta.json",
+    )
+    segment_index = _load_optional_faiss_index(
+        index_path=output_dir / "faiss" / "segment_index.faiss",
+        meta_path=output_dir / "faiss" / "segment_index.meta.json",
+    )
+    if segment_index is None:
         segment_index = index
-        video_index = None
-    else:
-        from .faiss_store import FaissFrameIndex
 
-        index = FaissFrameIndex.load(
-            index_path=output_dir / "faiss" / "frame_index.faiss",
-            meta_path=output_dir / "faiss" / "frame_index.meta.json",
-        )
-        segment_index = _load_optional_faiss_index(
-            index_path=output_dir / "faiss" / "segment_index.faiss",
-            meta_path=output_dir / "faiss" / "segment_index.meta.json",
-        )
-        if segment_index is None:
-            segment_index = index
-
-        video_index = _load_optional_faiss_index(
-            index_path=output_dir / "faiss" / "video_index.faiss",
-            meta_path=output_dir / "faiss" / "video_index.meta.json",
-        )
+    video_index = _load_optional_faiss_index(
+        index_path=output_dir / "faiss" / "video_index.faiss",
+        meta_path=output_dir / "faiss" / "video_index.meta.json",
+    )
     metadata_store = MetadataStore(metadata_db_path)
-    retrieval_config = RetrievalConfig.for_preset(retrieval_preset)
+    retrieval_config = RetrievalConfig()
     if video_recall_top_k is not None:
         retrieval_config.video_recall_top_k = video_recall_top_k
     if segment_recall_top_k is not None:
@@ -124,8 +100,6 @@ def build_retriever(
         retrieval_config.video_recall_candidate_pool_size = video_recall_candidate_pool_size
     if segment_recall_candidate_pool_size is not None:
         retrieval_config.segment_recall_candidate_pool_size = segment_recall_candidate_pool_size
-    if rerank_score_agg_mode is not None:
-        retrieval_config.rerank_score_agg_mode = rerank_score_agg_mode
     if rerank_top_k_average is not None:
         retrieval_config.rerank_top_k_average = rerank_top_k_average
     if rerank_smoothmax_beta is not None:
@@ -366,7 +340,6 @@ def parse_args():
     parser.add_argument("--profile", help="Named storage profile for side-by-side indexes, e.g. seg4s.")
     parser.add_argument("--model-path", default=str(PROJECT_ROOT / "models"))
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--retrieval-preset", choices=["current", "baseline"], default="current")
     parser.add_argument("--video-recall-top-k", type=int, help="Optional override for video recall search count.")
     parser.add_argument("--segment-recall-top-k", type=int, help="Optional override for segment recall search count.")
     parser.add_argument(
@@ -378,11 +351,6 @@ def parse_args():
         "--segment-recall-candidate-pool-size",
         type=int,
         help="Optional override for segment recall candidate pool size.",
-    )
-    parser.add_argument(
-        "--rerank-score-agg-mode",
-        choices=["topk_average", "smoothmax", "consensus_smoothmax"],
-        help="Optional override for final video score aggregation mode.",
     )
     parser.add_argument("--rerank-top-k-average", type=int, help="Optional override for rerank top-k aggregation count.")
     parser.add_argument("--rerank-smoothmax-beta", type=float, help="Optional override for rerank smoothmax beta.")
@@ -400,39 +368,29 @@ def parse_args():
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8010)
-    parser.add_argument("--vector-backend", choices=["faiss", "milvus"], default="faiss")
-    parser.add_argument("--milvus-uri", default="http://127.0.0.1:19530")
-    parser.add_argument("--milvus-token", default="")
-    parser.add_argument("--milvus-collection", default="video_frame_embeddings")
     return parser.parse_args()
 
 
 def main():
+    args = parse_args()
     import uvicorn
 
-    args = parse_args()
     output_dir, metadata_db_path = _resolve_runtime_paths(args)
     retriever = build_retriever(
         output_dir=output_dir,
         metadata_db_path=metadata_db_path,
         model_path=args.model_path,
         device=args.device,
-        retrieval_preset=args.retrieval_preset,
         video_recall_top_k=args.video_recall_top_k,
         segment_recall_top_k=args.segment_recall_top_k,
         video_recall_candidate_pool_size=args.video_recall_candidate_pool_size,
         segment_recall_candidate_pool_size=args.segment_recall_candidate_pool_size,
-        rerank_score_agg_mode=args.rerank_score_agg_mode,
         rerank_top_k_average=args.rerank_top_k_average,
         rerank_smoothmax_beta=args.rerank_smoothmax_beta,
         clip_score_weight=args.clip_score_weight,
         motion_score_weight=args.motion_score_weight,
         rerank_segment_support_weight=args.rerank_segment_support_weight,
         rerank_genericness_penalty_weight=args.rerank_genericness_penalty_weight,
-        vector_backend=args.vector_backend,
-        milvus_uri=args.milvus_uri,
-        milvus_token=args.milvus_token,
-        milvus_collection=args.milvus_collection,
     )
     app = create_app(retriever)
     uvicorn.run(app, host=args.host, port=args.port)

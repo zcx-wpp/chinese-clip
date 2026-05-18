@@ -20,7 +20,6 @@ def parse_args():
     parser.add_argument("--profile", help="Named storage profile for side-by-side indexes, e.g. seg4s.")
     parser.add_argument("--model-path", default=str(PROJECT_ROOT / "models"))
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--retrieval-preset", choices=["current", "baseline"], default="current")
     parser.add_argument("--video-recall-top-k", type=int, help="Optional override for video recall search count.")
     parser.add_argument("--segment-recall-top-k", type=int, help="Optional override for segment recall search count.")
     parser.add_argument(
@@ -32,11 +31,6 @@ def parse_args():
         "--segment-recall-candidate-pool-size",
         type=int,
         help="Optional override for segment recall candidate pool size.",
-    )
-    parser.add_argument(
-        "--rerank-score-agg-mode",
-        choices=["topk_average", "smoothmax", "consensus_smoothmax"],
-        help="Optional override for final video score aggregation mode.",
     )
     parser.add_argument("--rerank-top-k-average", type=int, help="Optional override for rerank top-k aggregation count.")
     parser.add_argument("--rerank-smoothmax-beta", type=float, help="Optional override for rerank smoothmax beta.")
@@ -52,10 +46,6 @@ def parse_args():
         type=float,
         help="Optional override for genericness penalty weight.",
     )
-    parser.add_argument("--vector-backend", choices=["faiss", "milvus"], default="faiss")
-    parser.add_argument("--milvus-uri", default="http://127.0.0.1:19530")
-    parser.add_argument("--milvus-token", default="")
-    parser.add_argument("--milvus-collection", default="video_frame_embeddings")
     parser.add_argument("--eval-labels", default=str(PROJECT_ROOT / "metadata" / "1799eval_labels.json"))
     parser.add_argument("--queries-file", help="Optional UTF-8 text file, one query per line.")
     parser.add_argument("--batch-results", help="Optional batch_search_results JSON to reuse final ranking output.")
@@ -124,22 +114,16 @@ def analyze(args) -> dict:
         metadata_db_path=_resolve_metadata_db(args),
         model_path=args.model_path,
         device=args.device,
-        retrieval_preset=args.retrieval_preset,
         video_recall_top_k=args.video_recall_top_k,
         segment_recall_top_k=args.segment_recall_top_k,
         video_recall_candidate_pool_size=args.video_recall_candidate_pool_size,
         segment_recall_candidate_pool_size=args.segment_recall_candidate_pool_size,
-        rerank_score_agg_mode=args.rerank_score_agg_mode,
         rerank_top_k_average=args.rerank_top_k_average,
         rerank_smoothmax_beta=args.rerank_smoothmax_beta,
         clip_score_weight=args.clip_score_weight,
         motion_score_weight=args.motion_score_weight,
         rerank_segment_support_weight=args.rerank_segment_support_weight,
         rerank_genericness_penalty_weight=args.rerank_genericness_penalty_weight,
-        vector_backend=args.vector_backend,
-        milvus_uri=args.milvus_uri,
-        milvus_token=args.milvus_token,
-        milvus_collection=args.milvus_collection,
     )
     eval_map = load_eval_labels(Path(args.eval_labels))
     if args.queries_file:
@@ -213,7 +197,6 @@ def analyze(args) -> dict:
     return {
         "query_count": query_count,
         "top_k": args.top_k,
-        "retrieval_preset": args.retrieval_preset,
         "queries_file": args.queries_file,
         "stage_counts": dict(summary_counter),
         "stage_rates": {
@@ -230,7 +213,6 @@ def render_markdown(payload: dict) -> str:
         "",
         f"- Query count: {payload['query_count']}",
         f"- Top K: {payload['top_k']}",
-        f"- Retrieval preset: {payload.get('retrieval_preset', 'current')}",
         "",
         "## Stage Counts",
         "",

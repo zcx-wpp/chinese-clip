@@ -18,7 +18,6 @@ def parse_args():
     parser.add_argument("--profile", help="Named storage profile, e.g. seg4s.")
     parser.add_argument("--model-path", default=str(PROJECT_ROOT / "models"))
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--retrieval-preset", choices=["current", "baseline"], default="current")
     parser.add_argument("--video-recall-top-k", type=int)
     parser.add_argument("--segment-recall-top-k", type=int)
     parser.add_argument("--video-recall-candidate-pool-size", type=int)
@@ -93,7 +92,6 @@ def analyze(args) -> dict:
         metadata_db_path=_resolve_metadata_db(args),
         model_path=args.model_path,
         device=args.device,
-        retrieval_preset=args.retrieval_preset,
         video_recall_top_k=args.video_recall_top_k,
         segment_recall_top_k=args.segment_recall_top_k,
         video_recall_candidate_pool_size=args.video_recall_candidate_pool_size,

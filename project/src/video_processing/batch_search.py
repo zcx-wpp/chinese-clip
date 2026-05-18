@@ -27,7 +27,6 @@ def parse_args():
     parser.add_argument("--profile", help="Named storage profile for side-by-side indexes, e.g. seg4s.")
     parser.add_argument("--model-path", default=str(PROJECT_ROOT / "models"))
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--retrieval-preset", choices=["current", "baseline"], default="current")
     parser.add_argument("--video-recall-top-k", type=int, help="Optional override for video recall search count.")
     parser.add_argument("--segment-recall-top-k", type=int, help="Optional override for segment recall search count.")
     parser.add_argument(
@@ -39,11 +38,6 @@ def parse_args():
         "--segment-recall-candidate-pool-size",
         type=int,
         help="Optional override for segment recall candidate pool size.",
-    )
-    parser.add_argument(
-        "--rerank-score-agg-mode",
-        choices=["topk_average", "smoothmax", "consensus_smoothmax"],
-        help="Optional override for final video score aggregation mode.",
     )
     parser.add_argument("--rerank-top-k-average", type=int, help="Optional override for rerank top-k aggregation count.")
     parser.add_argument("--rerank-smoothmax-beta", type=float, help="Optional override for rerank smoothmax beta.")
@@ -59,10 +53,6 @@ def parse_args():
         type=float,
         help="Optional override for genericness penalty weight.",
     )
-    parser.add_argument("--vector-backend", choices=["faiss", "milvus"], default="faiss")
-    parser.add_argument("--milvus-uri", default="http://127.0.0.1:19530")
-    parser.add_argument("--milvus-token", default="")
-    parser.add_argument("--milvus-collection", default="video_frame_embeddings")
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--query-workers", type=int, default=1, help="Number of queries to search concurrently.")
     parser.add_argument("--queries-file", help="UTF-8 text file, one query per line.")
@@ -102,22 +92,16 @@ def _build_batch_retriever(args):
         metadata_db_path=resolve_metadata_db(args),
         model_path=args.model_path,
         device=args.device,
-        retrieval_preset=args.retrieval_preset,
         video_recall_top_k=args.video_recall_top_k,
         segment_recall_top_k=args.segment_recall_top_k,
         video_recall_candidate_pool_size=args.video_recall_candidate_pool_size,
         segment_recall_candidate_pool_size=args.segment_recall_candidate_pool_size,
-        rerank_score_agg_mode=args.rerank_score_agg_mode,
         rerank_top_k_average=args.rerank_top_k_average,
         rerank_smoothmax_beta=args.rerank_smoothmax_beta,
         clip_score_weight=args.clip_score_weight,
         motion_score_weight=args.motion_score_weight,
         rerank_segment_support_weight=args.rerank_segment_support_weight,
         rerank_genericness_penalty_weight=args.rerank_genericness_penalty_weight,
-        vector_backend=args.vector_backend,
-        milvus_uri=args.milvus_uri,
-        milvus_token=args.milvus_token,
-        milvus_collection=args.milvus_collection,
     )
 
 
@@ -127,22 +111,16 @@ def _retriever_cache_key(args) -> tuple[str, ...]:
         str(resolve_metadata_db(args)),
         args.model_path,
         args.device,
-        args.retrieval_preset,
         str(args.video_recall_top_k if args.video_recall_top_k is not None else ""),
         str(args.segment_recall_top_k if args.segment_recall_top_k is not None else ""),
         str(args.video_recall_candidate_pool_size if args.video_recall_candidate_pool_size is not None else ""),
         str(args.segment_recall_candidate_pool_size if args.segment_recall_candidate_pool_size is not None else ""),
-        args.rerank_score_agg_mode or "",
         str(args.rerank_top_k_average or ""),
         str(args.rerank_smoothmax_beta or ""),
         str(args.clip_score_weight if args.clip_score_weight is not None else ""),
         str(args.motion_score_weight if args.motion_score_weight is not None else ""),
         str(args.rerank_segment_support_weight if args.rerank_segment_support_weight is not None else ""),
         str(args.rerank_genericness_penalty_weight if args.rerank_genericness_penalty_weight is not None else ""),
-        args.vector_backend,
-        args.milvus_uri,
-        args.milvus_token,
-        args.milvus_collection,
     )
 
 

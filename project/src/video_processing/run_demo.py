@@ -9,16 +9,12 @@ from pathlib import Path
 def parse_args():
     parser = argparse.ArgumentParser(description="Run the minimal video retrieval demo flow.")
     parser.add_argument("--video-dir", required=True, help="Directory containing source videos.")
-    parser.add_argument("--work-dir", required=True, help="Directory for generated index files.")
+    parser.add_argument("--output-dir", required=True, help="Directory for generated pipeline output.")
+    parser.add_argument("--metadata-db", required=True, help="SQLite metadata DB path.")
     parser.add_argument("--model-path", required=True, help="Local Chinese-CLIP model directory.")
     parser.add_argument("--labels", required=True, help="Evaluation labels JSON.")
     parser.add_argument("--device", default="cuda")
-    parser.add_argument("--vector-backend", choices=["faiss", "milvus"], default="faiss")
-    parser.add_argument("--milvus-uri", default="http://127.0.0.1:19530")
-    parser.add_argument("--milvus-token", default="")
-    parser.add_argument("--milvus-collection", default="video_frame_embeddings")
-    parser.add_argument("--enable-ocr", action="store_true")
-    parser.add_argument("--enable-asr", action="store_true")
+    parser.add_argument("--limit", type=int, default=0, help="Only process the first N videos. 0 means all.")
     parser.add_argument("--skip-index", action="store_true", help="Skip offline indexing if index already exists.")
     parser.add_argument("--skip-eval", action="store_true", help="Skip evaluation.")
     parser.add_argument("--skip-validate", action="store_true", help="Skip environment validation.")
@@ -45,64 +41,52 @@ def main():
     args = parse_args()
     root = Path(__file__).resolve().parent.parent
     python_exe = sys.executable
+    package_name = __package__ or "project.src.video_processing"
 
     if not args.skip_validate:
-        run_command(module_command(python_exe, "video_processing.validate_env", "--model-path", args.model_path))
+        run_command(module_command(python_exe, f"{package_name}.validate_env", "--model-path", args.model_path))
 
     if not args.skip_index:
         index_command = module_command(
             python_exe,
-            "video_processing.offline_pipeline",
+            f"{package_name}.minimal_pipeline",
             "--video-dir",
             args.video_dir,
-            "--work-dir",
-            args.work_dir,
+            "--output-dir",
+            args.output_dir,
+            "--metadata-db",
+            args.metadata_db,
             "--model-path",
             args.model_path,
             "--device",
             args.device,
-            "--vector-backend",
-            args.vector_backend,
-            "--milvus-uri",
-            args.milvus_uri,
-            "--milvus-token",
-            args.milvus_token,
-            "--milvus-collection",
-            args.milvus_collection,
         )
-        if args.enable_ocr:
-            index_command.append("--enable-ocr")
-        if args.enable_asr:
-            index_command.append("--enable-asr")
+        if args.limit > 0:
+            index_command.extend(["--limit", str(args.limit)])
         run_command(index_command)
 
     if not args.skip_eval:
         eval_command = module_command(
             python_exe,
-            "video_processing.evaluate",
-            "--work-dir",
-            args.work_dir,
+            f"{package_name}.evaluate",
+            "--output-dir",
+            args.output_dir,
+            "--metadata-db",
+            args.metadata_db,
             "--model-path",
             args.model_path,
             "--labels",
             args.labels,
             "--device",
             args.device,
-            "--vector-backend",
-            args.vector_backend,
-            "--milvus-uri",
-            args.milvus_uri,
-            "--milvus-token",
-            args.milvus_token,
-            "--milvus-collection",
-            args.milvus_collection,
         )
         run_command(eval_command)
 
     print("")
     print("Demo flow finished.")
     print(f"Workspace: {root}")
-    print(f"Index dir: {Path(args.work_dir).resolve()}")
+    print(f"Output dir: {Path(args.output_dir).resolve()}")
+    print(f"Metadata DB: {Path(args.metadata_db).resolve()}")
 
 
 if __name__ == "__main__":

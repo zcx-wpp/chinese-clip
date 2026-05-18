@@ -6,10 +6,9 @@ import faiss
 import numpy as np
 
 from .io_utils import read_json, write_json
-from .vector_store import VectorStore
 
 
-class FaissFrameIndex(VectorStore):
+class FaissFrameIndex:
     def __init__(self, dim: int = 512):
         self.dim = dim
         self.index = faiss.IndexFlatIP(dim)
