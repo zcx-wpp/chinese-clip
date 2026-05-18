@@ -6,12 +6,14 @@ from pathlib import Path
 from .api import build_retriever
 from .config import PROJECT_ROOT
 from .io_utils import read_json
+from .profile_paths import default_metadata_db_path, default_output_dir, resolve_path
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate video retrieval quality.")
-    parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "output"))
-    parser.add_argument("--metadata-db", default=str(PROJECT_ROOT / "metadata" / "metadata.db"))
+    parser.add_argument("--output-dir")
+    parser.add_argument("--metadata-db")
+    parser.add_argument("--profile", help="Named storage profile for side-by-side indexes, e.g. seg4s.")
     parser.add_argument("--model-path", default=str(PROJECT_ROOT / "models"))
     parser.add_argument("--labels", required=True, help="JSON file with query/video/time annotations.")
     parser.add_argument("--limit", type=int, default=0, help="Only evaluate the first N labels. 0 means all.")
@@ -126,9 +128,11 @@ def main():
     labels = load_labels(Path(args.labels))
     if args.limit > 0:
         labels = labels[:args.limit]
+    output_dir = resolve_path(args.output_dir, default_output_dir(args.profile))
+    metadata_db_path = resolve_path(args.metadata_db, default_metadata_db_path(args.profile))
     retriever = build_retriever(
-        output_dir=Path(args.output_dir),
-        metadata_db_path=Path(args.metadata_db),
+        output_dir=output_dir,
+        metadata_db_path=metadata_db_path,
         model_path=args.model_path,
         device=args.device,
         video_recall_top_k=args.video_recall_top_k,

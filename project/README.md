@@ -1,145 +1,104 @@
 # project
 
-视频处理代码已经单独整理到下面这套目录结构中：
+This directory contains the maintained video indexing and retrieval workspace.
+
+## Layout
 
 ```text
 project/
-|
-├── videos/
-│
-├── output/
-│   ├── segments/
-│   ├── frames/
-│   ├── embeddings/
-│   ├── faiss/
-│   └── logs/
-│
-├── metadata/
-│   └── metadata.db
-│
-├── models/
-│
-└── src/
-    └── video_processing/
+|-- metadata/
+|   |-- 1799eval_labels.json
+|   |-- metadata.db
+|   `-- sample_queries.txt
+|-- models/
+|-- output/
+|-- profiles/
+|-- src/
+|   `-- video_processing/
+|-- videos/
+|-- run_ingest_msrvtt500_seg4s_test.cmd
+`-- run_ingest_seg4s_incremental.cmd
 ```
 
-## 各目录职责
+## Path conventions
 
-- `videos/`: 原始视频输入
-- `output/segments/`: ffmpeg 切片结果
-- `output/frames/`: 抽帧结果
-- `output/embeddings/`: 预留给 embedding 中间产物
-- `output/faiss/`: FAISS 索引文件
-- `output/logs/`: 日志输出
-- `metadata/metadata.db`: SQLite 元数据库
-- `models/`: Chinese-CLIP 模型目录
-- `src/video_processing/`: 视频处理代码
+Code under `project/src/video_processing/` uses these defaults:
 
-## 当前代码默认约定
+- default video directory: `project/videos/`
+- default output directory: `project/output/`
+- default metadata DB: `project/metadata/metadata.db`
+- default model directory: `project/models/`
 
-`project/src/video_processing/` 里的代码已经按这套结构设置默认路径：
+If you pass `--profile seg4s`, the profile-specific defaults become:
 
-- 默认视频目录：`project/videos/`
-- 默认输出目录：`project/output/`
-- 默认元数据目录：`project/metadata/`
-- 默认模型目录：`project/models/`
+- output directory: `project/profiles/seg4s/output/`
+- metadata DB: `project/profiles/seg4s/metadata.db`
 
-离线建库默认会写：
+The helper scripts in this repo may still point at alternate local video
+directories such as `data/videos/` or `data/data1/...`.
 
-- `project/output/segments/...`
-- `project/output/frames/...`
-- `project/output/faiss/frame_index.faiss`
-- `project/output/faiss/frame_index.meta.json`
-- `project/metadata/metadata.db`
+## Core commands
 
-## 运行方式
-
-在仓库根目录执行：
+Validate the runtime:
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.offline_pipeline --device cpu
+.venv\Scripts\python.exe -m project.src.video_processing.validate_env --model-path project/models
 ```
 
-## Minimal Pipeline
-
-如果你只想跑最小可运行版本，只做：
-
-1. segment
-2. frame
-3. clip embedding
-4. top-k
-5. faiss
-
-运行：
+Run the maintained ingestion pipeline:
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.minimal_pipeline --device cpu
+.venv\Scripts\python.exe -m project.src.video_processing.minimal_pipeline --profile seg4s --video-dir data/videos --model-path project/models --device cpu
 ```
 
-常用测试命令，例如先跑 1 个视频：
+Useful flags:
+
+- `--limit`
+- `--segment-seconds`
+- `--frames-per-second`
+- `--top-k-per-segment`
+- `--video-workers`
+- `--num-workers`
+
+Start the search API:
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.minimal_pipeline --device cpu --limit 1
+.venv\Scripts\python.exe -m project.src.video_processing.api --profile seg4s --model-path project/models --device cpu
 ```
 
-先跑 10 个视频：
+Run batch search:
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.minimal_pipeline --device cpu --limit 10
+.venv\Scripts\python.exe -m project.src.video_processing.batch_search --profile seg4s --model-path project/models --queries-file project/metadata/sample_queries.txt --device cpu --top-k 10
 ```
 
-最小版输出只关注三类结果：
-
-- `project/output/embeddings/frame_embeddings.npy`
-- `project/output/embeddings/frame_embeddings.jsonl`
-- `project/output/faiss/frame_index.faiss`
-- `project/output/faiss/frame_index.meta.json`
-- `project/metadata/metadata.db`
-
-评估：
+Evaluate against the checked-in labels:
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.evaluate --labels D:\path\to\eval_labels.json --device cpu
+.venv\Scripts\python.exe -m project.src.video_processing.evaluate --profile seg4s --model-path project/models --labels project/metadata/1799eval_labels.json --device cpu
 ```
 
-启动 API：
+Rebuild FAISS indexes from cached embeddings:
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.api --device cpu --retrieval-preset current
+.venv\Scripts\python.exe -m project.src.video_processing.rebuild_indexes --profile seg4s --model-path project/models
 ```
+
+Run the demo flow with explicit paths:
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.batch_search --profile seg4s --retrieval-preset current
-.venv\Scripts\python.exe -m project.src.video_processing.batch_search --profile seg4s --retrieval-preset baseline
+.venv\Scripts\python.exe -m project.src.video_processing.run_demo --video-dir data/videos --output-dir project/output --metadata-db project/metadata/metadata.db --model-path project/models --labels project/metadata/1799eval_labels.json --device cpu
 ```
 
-```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.analyze_recall_stages --profile seg4s --retrieval-preset current
-.venv\Scripts\python.exe -m project.src.video_processing.analyze_recall_stages --profile seg4s --retrieval-preset baseline
-```
+## Helper scripts
 
-返回结果中的 clip 现在包含 `score`，例如：
+- `run_ingest_seg4s_incremental.cmd`
+  Incremental ingest over `data/videos` into the `seg4s` profile.
+- `run_ingest_msrvtt500_seg4s_test.cmd`
+  Local 500-video ingest helper. Review the hard-coded video path before reuse.
 
-```json
-[
-  {
-    "video_id": "demo_video",
-    "score": 0.91,
-    "segments": [
-      {
-        "start": 1.0,
-        "end": 3.0,
-        "score": 0.88
-      }
-    ],
-    "video_path": "D:/path/to/demo_video.mp4"
-  }
-]
-```
+## Notes
 
-## 备注
-
-如果你后面愿意，我还可以继续做两件事：
-
-1. 把 `run_demo.py`、`validate_env.py` 也一起切成这套 `project/` 的默认路径风格  
-2. 把现有 `data/` 里的试验数据软链接或拷贝到 `project/videos/` / `project/models/`
+- `project/models/` is the local model location kept by the current workflow.
+- `project/output/` and `project/profiles/` are generated working areas.
+- `project/metadata/sample_queries.txt` and `project/metadata/1799eval_labels.json` are the remaining checked-in examples.

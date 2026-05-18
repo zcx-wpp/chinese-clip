@@ -1,14 +1,11 @@
 # chinese_clip
 
-This repository contains several Chinese-CLIP related workstreams in one place:
+This repository now keeps two active pieces:
 
-- training and evaluation scripts at the repository root
-- the current video retrieval / indexing pipeline under `project/`
-- an API-oriented environment under `chinese_clip/`
-- an older standalone `video_processing/` package kept for reference
+- `project/`: the maintained Chinese-CLIP video indexing and retrieval pipeline
+- `chinese_clip/`: a smaller API-oriented environment and helper app code
 
-For current video ingestion, retrieval, and analysis work, prefer
-`project/src/video_processing/`.
+The main maintained code path is `project/src/video_processing/`.
 
 ## Repository layout
 
@@ -16,50 +13,50 @@ For current video ingestion, retrieval, and analysis work, prefer
 .
 |-- README.md
 |-- requirements.txt
-|-- train_chinese_clip.py
-|-- evaluate_checkpoint.py
-|-- build_validation_splits.py
 |-- chinese_clip/
 |   |-- environment.yml
 |   `-- app/
-|-- model/
-|-- project/
-|   |-- metadata/
-|   |-- models/
-|   |-- src/video_processing/
-|   `-- run_*.cmd
-`-- video_processing/
+|-- data/
+`-- project/
+    |-- metadata/
+    |-- models/
+    |-- output/
+    |-- profiles/
+    |-- src/video_processing/
+    |-- videos/
+    |-- run_ingest_msrvtt500_seg4s_test.cmd
+    `-- run_ingest_seg4s_incremental.cmd
 ```
 
 ## What is tracked
 
-Git is currently set up to track:
+Git is intended to track:
 
 - source code
-- shell / cmd / powershell scripts
+- helper scripts
 - documentation
 - small config files
-- selected metadata and query examples
+- selected query and label examples
 
-Git is set up to ignore local heavy artifacts such as:
+Local heavy artifacts should stay untracked:
 
 - virtual environments
+- model weight files
 - checkpoints
-- model weight files such as `*.pt` and `*.bin`
-- generated embeddings such as `*.npy`
-- local outputs under `project/output/` and `project/profiles/`
-- large local datasets and logs
+- generated embeddings
+- generated indexes and logs
+- large local datasets
 
 If you later need versioned model weights, use Git LFS rather than plain Git.
 
-## Environment
+## Environments
 
 This repo currently has two environment entry points:
 
 1. `requirements.txt`
    General Python environment snapshot used by the current workspace.
 2. `chinese_clip/environment.yml`
-   Smaller Conda environment focused on the API / embedding service side.
+   Smaller Conda environment for the helper app under `chinese_clip/app/`.
 
 If you are working inside this repo on Windows with the local virtual
 environment, common commands can be run with:
@@ -70,36 +67,53 @@ environment, common commands can be run with:
 
 ## Common workflows
 
-### 1. Run the current minimal ingestion pipeline
-
-From the repository root:
+### 1. Validate the local runtime
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.minimal_pipeline --profile seg4s --video-dir data/videos --device cpu
+.venv\Scripts\python.exe -m project.src.video_processing.validate_env --model-path project/models
 ```
+
+### 2. Build or update an index
+
+```powershell
+.venv\Scripts\python.exe -m project.src.video_processing.minimal_pipeline --profile seg4s --video-dir data/videos --model-path project/models --device cpu
+```
+
+That command writes output under `project/profiles/seg4s/`.
 
 There are also ready-made helper scripts:
 
 ```powershell
 project\run_ingest_seg4s_incremental.cmd
 project\run_ingest_msrvtt500_seg4s_test.cmd
-project\run_eval_500_seg4s.cmd
 ```
 
-### 2. Run the offline pipeline directly
+### 3. Run the search API
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.offline_pipeline --device cpu
+.venv\Scripts\python.exe -m project.src.video_processing.api --profile seg4s --model-path project/models --device cpu
 ```
 
-### 3. Run analysis or retrieval tools
-
-Examples:
+### 4. Run batch retrieval
 
 ```powershell
-.venv\Scripts\python.exe -m project.src.video_processing.batch_search --profile seg4s --retrieval-preset current
-.venv\Scripts\python.exe -m project.src.video_processing.analyze_recall_stages --profile seg4s --retrieval-preset current
+.venv\Scripts\python.exe -m project.src.video_processing.batch_search --profile seg4s --model-path project/models --queries-file project/metadata/sample_queries.txt --device cpu --top-k 10
 ```
+
+### 5. Evaluate retrieval quality
+
+```powershell
+.venv\Scripts\python.exe -m project.src.video_processing.evaluate --profile seg4s --model-path project/models --labels project/metadata/1799eval_labels.json --device cpu
+```
+
+## Checked-in examples
+
+The remaining checked-in metadata examples are:
+
+- `project/metadata/sample_queries.txt`
+- `project/metadata/1799eval_labels.json`
+
+These are enough for quick local retrieval and evaluation checks.
 
 ## Git workflow
 
@@ -125,7 +139,6 @@ Suggested commit prefixes:
 - `refactor:` internal cleanup without behavior change
 - `docs:` README or documentation updates
 - `chore:` repo maintenance, ignore rules, tooling
-- `exp:` temporary experiment or evaluation-only change
 
 ## Useful recovery commands
 
@@ -156,7 +169,6 @@ git restore <path>
 
 ## Notes
 
-- The repo currently mixes experiment code and pipeline code in one place.
-- `project/src/video_processing/` appears to be the main maintained path.
-- `video_processing/` is still useful as a smaller standalone reference module.
-- Some existing README files in subdirectories may use a different text encoding.
+- `project/src/video_processing/` is the main maintained path.
+- `project/models/`, `project/output/`, and `project/profiles/` are local working areas.
+- Some existing files in the repo may still use older text encodings.
