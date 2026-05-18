@@ -1,0 +1,70 @@
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.venv/
+venv/
+env/
+ENV/
+
+# Tooling and editor state
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Logs and local runtime files
+*.log
+*.out
+*.err
+*.pid
+*.tmp
+*.temp
+
+# Notebook and OS noise
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+
+# Large datasets and generated training artifacts
+data/
+muge_sample/
+validation_sets/
+validation_sets_test/
+checkpoints/
+checkpoints_hardneg/
+checkpoints_hardneg_v2/
+eval_results/
+project/output/
+project/profiles/
+project/videos/
+project/videos_eval500/
+project/videos_single_fix/
+project/videos_subset_500/
+
+# Generated metadata stores
+project/metadata/metadata.db
+
+# Local model weights and binary artifacts
+model/.msc
+model/.mv
+model/*.pt
+model/*.bin
+project/models/.msc
+project/models/.mv
+project/models/*.pt
+project/models/*.bin
+*.ckpt
+*.safetensors
+*.npy
+*.npz
+
+# Large local exports at repo root
+cleaned_muge_sample.jsonl
+cleaned_muge_with_negatives.jsonl
