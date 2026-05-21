@@ -3,6 +3,19 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from .portable_paths import portable_path_text, resolved_path_text
+
+
+PATH_FIELD_NAMES = frozenset(
+    {
+        "path",
+        "video_path",
+        "frame_path",
+        "embedding_path",
+        "embedding_metadata_path",
+    }
+)
+
 
 class MetadataStore:
     def __init__(self, db_path: Path):
@@ -123,12 +136,24 @@ class MetadataStore:
             self.conn.commit()
         return result
 
+    def _normalize_record_paths(self, record: dict) -> dict:
+        for key in PATH_FIELD_NAMES:
+            value = record.get(key)
+            if value is None:
+                continue
+            record[key] = resolved_path_text(value)
+        return record
+
+    @staticmethod
+    def _portable_path_value(value: str | None) -> str | None:
+        return portable_path_text(value)
+
     def _fetchone_dict(self, sql: str, params: tuple = ()) -> dict | None:
         row = self._execute(sql, params).fetchone()
-        return dict(row) if row else None
+        return self._normalize_record_paths(dict(row)) if row else None
 
     def _fetchall_dicts(self, sql: str, params: tuple | list = ()) -> list[dict]:
-        return [dict(row) for row in self._execute(sql, params).fetchall()]
+        return [self._normalize_record_paths(dict(row)) for row in self._execute(sql, params).fetchall()]
 
     @staticmethod
     def _sort_by_order(records: list[dict], key: str, values: list[str]) -> list[dict]:
@@ -154,6 +179,9 @@ class MetadataStore:
         error_message: str | None = None,
         updated_at: str | None = None,
     ):
+        path = self._portable_path_value(path)
+        embedding_path = self._portable_path_value(embedding_path)
+        embedding_metadata_path = self._portable_path_value(embedding_metadata_path)
         self._execute(
             """
             INSERT INTO videos(
@@ -199,6 +227,8 @@ class MetadataStore:
         embedding_metadata_path: str,
         embedding_norm: float,
     ):
+        embedding_path = self._portable_path_value(embedding_path)
+        embedding_metadata_path = self._portable_path_value(embedding_metadata_path)
         self._execute(
             """
             UPDATE videos
@@ -355,6 +385,9 @@ class MetadataStore:
         embedding_metadata_path: str | None = None,
         embedding_norm: float | None = None,
     ):
+        path = self._portable_path_value(path)
+        embedding_path = self._portable_path_value(embedding_path)
+        embedding_metadata_path = self._portable_path_value(embedding_metadata_path)
         self._execute(
             """
             INSERT INTO segments(segment_id, video_id, start_time, end_time, path, embedding_path, embedding_metadata_path, embedding_norm)
@@ -382,6 +415,8 @@ class MetadataStore:
         motion_score: float | None = None,
         visual_diversity_score: float | None = None,
     ):
+        embedding_path = self._portable_path_value(embedding_path)
+        embedding_metadata_path = self._portable_path_value(embedding_metadata_path)
         self._execute(
             """
             UPDATE segments
@@ -444,6 +479,9 @@ class MetadataStore:
         height: int,
         embedding_norm: float,
     ):
+        frame_path = self._portable_path_value(frame_path)
+        embedding_path = self._portable_path_value(embedding_path)
+        embedding_metadata_path = self._portable_path_value(embedding_metadata_path)
         self._execute(
             """
             INSERT OR REPLACE INTO frames(

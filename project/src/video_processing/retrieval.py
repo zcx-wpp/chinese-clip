@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 
@@ -10,6 +9,7 @@ from .config import RetrievalConfig
 from .embedding import ChineseClipEncoder
 from .faiss_store import FaissFrameIndex
 from .metadata_store import MetadataStore
+from .portable_paths import resolve_portable_path
 
 
 @dataclass
@@ -259,7 +259,7 @@ class VideoRetriever:
         cached = self.embedding_cache.get(embedding_path)
         if cached is not None:
             return cached
-        vector = np.load(Path(embedding_path)).astype(np.float32)
+        vector = np.load(resolve_portable_path(embedding_path)).astype(np.float32)
         vector = normalize_vector(vector)
         self.embedding_cache[embedding_path] = vector
         return vector

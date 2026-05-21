@@ -9,6 +9,10 @@ venv/
 env/
 ENV/
 
+# Secrets
+.env
+.env.*
+
 # Tooling and editor state
 .vscode/
 .idea/
@@ -32,39 +36,54 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Large datasets and generated training artifacts
+# Large datasets and media at repo root
 data/
 muge_sample/
 validation_sets/
 validation_sets_test/
+4月份媒资库素材1/
+
+# Training / eval artifacts
 checkpoints/
 checkpoints_hardneg/
 checkpoints_hardneg_v2/
 eval_results/
+cleaned_muge_sample.jsonl
+cleaned_muge_with_negatives.jsonl
+
+# project: generated outputs, indexes, videos
 project/output/
 project/profiles/
 project/videos/
 project/videos_eval500/
 project/videos_single_fix/
 project/videos_subset_500/
-
-# Generated metadata stores
 project/metadata/metadata.db
+project/metadata/metadata.db-*
 
-# Local model weights and binary artifacts
+# Local model weights
 model/.msc
 model/.mv
 model/*.pt
 model/*.bin
-project/models/.msc
-project/models/.mv
-project/models/*.pt
-project/models/*.bin
+project/models/
+project/models/**
+
+# picture: local FAISS / embeddings / DB (code under picture/*.py is tracked)
+picture/profiles/
+
+# doubao_pipeline: local hybrid indexes and DB (Python package code is tracked)
+doubao_pipeline/profiles/
+
+# Binary / vector artifacts (regenerate locally)
 *.ckpt
 *.safetensors
+*.faiss
 *.npy
 *.npz
+*.pt
+*.bin
 
-# Large local exports at repo root
-cleaned_muge_sample.jsonl
-cleaned_muge_with_negatives.jsonl
+# Large caption dumps inside profiles (if any path slips through)
+**/doubao_video_captions.jsonl
+**/doubao_video_captions_by_video.json

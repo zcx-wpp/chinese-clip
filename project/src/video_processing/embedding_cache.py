@@ -6,6 +6,7 @@ import numpy as np
 
 from .io_utils import write_json
 from .logging_utils import utc_now_iso
+from .portable_paths import portable_path_text
 
 
 def embedding_metadata_path(embedding_path: Path) -> Path:
@@ -31,13 +32,13 @@ def write_embedding_cache(
     metadata = {
         item_id_key: item_id,
         "model": model_name,
-        "model_path": model_path,
+        "model_path": portable_path_text(model_path) or model_path,
         "model_revision": model_revision,
         "dim": int(embedding_dim),
         "embedding_dtype": embedding_dtype,
         "created_at": utc_now_iso(),
         "norm": float(embedding_norm),
-        "embedding_path": str(embedding_path.resolve()),
+        "embedding_path": portable_path_text(embedding_path) or str(embedding_path.resolve()),
     }
     write_json(metadata_path, metadata)
     return metadata_path
