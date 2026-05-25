@@ -5,7 +5,7 @@ from pathlib import Path
 import faiss
 import numpy as np
 
-from .config import INDEX_KIND, INDEX_KIND_CAPTION, MODALITY
+from .config import INDEX_KIND, MODALITY
 from .io_utils import read_json, write_json
 
 
@@ -31,9 +31,9 @@ class PictureFaissIndex:
             query_embeddings = query_embeddings.reshape(1, -1)
         scores, indices = self.index.search(query_embeddings, top_k)
         results = []
-        for row_scores, row_indices in zip(scores, indices):
+        for row_scores, row_indices in zip(scores, indices, strict=False):
             items = []
-            for score, idx in zip(row_scores, row_indices):
+            for score, idx in zip(row_scores, row_indices, strict=False):
                 if idx < 0 or idx >= len(self.item_ids):
                     continue
                 items.append((self.item_ids[idx], float(score)))
@@ -61,12 +61,14 @@ class PictureFaissIndex:
         meta_path: Path,
         *,
         expected_index_kind: str | None = INDEX_KIND,
-    ) -> "PictureFaissIndex":
+    ) -> PictureFaissIndex:
         meta = read_json(meta_path)
         meta_kind = meta.get("index_kind")
         if expected_index_kind and meta_kind not in {None, expected_index_kind}:
             raise ValueError(f"index_kind mismatch: {meta_kind!r} vs {expected_index_kind!r}")
-        instance = cls(dim=int(meta["dim"]), index_kind=str(meta_kind or expected_index_kind or INDEX_KIND))
+        instance = cls(
+            dim=int(meta["dim"]), index_kind=str(meta_kind or expected_index_kind or INDEX_KIND)
+        )
         instance.index = faiss.read_index(str(index_path))
         instance.item_ids = list(meta.get("item_ids") or [])
         return instance

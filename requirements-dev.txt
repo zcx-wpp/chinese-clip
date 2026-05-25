@@ -1,0 +1,5 @@
+# Development tooling (optional)
+ruff>=0.8.0
+
+# picture.dual_search_service 以图搜图上传（POST /search-by-image）
+python-multipart>=0.0.9

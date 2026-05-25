@@ -65,7 +65,9 @@ def sync_faiss_index(
         )
         return "noop"
 
-    need_full = force_full_rebuild or not index_exists or incremental_adds >= incremental_adds_before_full
+    need_full = (
+        force_full_rebuild or not index_exists or incremental_adds >= incremental_adds_before_full
+    )
     existing: PictureFaissIndex | None = None
     if index_exists:
         existing = PictureFaissIndex.load(index_path, meta_path, expected_index_kind=index_kind)
@@ -73,7 +75,7 @@ def sync_faiss_index(
             need_full = True
 
     if not need_full and existing is not None:
-        id_to_row = dict(zip(all_ids, all_vectors))
+        id_to_row = dict(zip(all_ids, all_vectors, strict=False))
         append_ids = [i for i in new_ids if i not in set(existing.item_ids)]
         if append_ids:
             matrix = np.vstack([id_to_row[i] for i in append_ids]).astype(np.float32)

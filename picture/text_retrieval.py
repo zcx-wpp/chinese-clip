@@ -8,11 +8,10 @@ import numpy as np
 
 from .config import INDEX_KIND_CAPTION
 from .faiss_store import PictureFaissIndex
-from .profile_paths import default_caption_metadata_db_path, default_output_dir, resolve_path
 from .image_resolve import resolve_image_file
-from .portable_paths import resolve_portable_path
-from .text_metadata_store import CaptionMetadataStore
+from .profile_paths import default_caption_metadata_db_path, default_output_dir, resolve_path
 from .search_dedup import compute_fetch_k, dedupe_hits
+from .text_metadata_store import CaptionMetadataStore
 from .vector_utils import l2_normalize
 
 
@@ -24,7 +23,9 @@ class TextSearchFilters:
     style: str | None = None
 
     def active(self) -> bool:
-        return any(str(v or "").strip() for v in (self.subject, self.color, self.action, self.style))
+        return any(
+            str(v or "").strip() for v in (self.subject, self.color, self.action, self.style)
+        )
 
 
 class PictureTextRetriever:
@@ -52,7 +53,8 @@ class PictureTextRetriever:
 
     def _get_embedder(self):
         if self._embedder is None:
-            from doubao_pipeline.dense_embeddings import HuggingFaceBgeTextEmbedder
+            from video_retrieval.hybrid.dense_embeddings import HuggingFaceBgeTextEmbedder
+
             from .config import DEFAULT_BGE_MODEL_NAME
 
             bge_dir = self.output_dir / "bge_embedder"
@@ -61,7 +63,9 @@ class PictureTextRetriever:
                     bge_dir, device=self.bge_device, batch_size=self.bge_batch_size
                 )
             else:
-                self._embedder = HuggingFaceBgeTextEmbedder(model_name=DEFAULT_BGE_MODEL_NAME, device=self.bge_device)
+                self._embedder = HuggingFaceBgeTextEmbedder(
+                    model_name=DEFAULT_BGE_MODEL_NAME, device=self.bge_device
+                )
         return self._embedder
 
     def search_text(

@@ -2,7 +2,7 @@ from pathlib import Path
 
 PICTURE_ROOT = Path(__file__).resolve().parent
 WORKSPACE_ROOT = PICTURE_ROOT.parent
-DEFAULT_MODEL_PATH = WORKSPACE_ROOT / "project" / "models"
+DEFAULT_MODEL_PATH = WORKSPACE_ROOT / "video_retrieval" / "models"
 DEFAULT_IMAGE_DIR = WORKSPACE_ROOT / "data" / "images"
 
 INDEX_KIND = "picture_image"

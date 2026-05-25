@@ -1,3 +1,5 @@
+"""Resolve image paths for picture retrieval (simpler rules than video)."""
+
 from __future__ import annotations
 
 import re

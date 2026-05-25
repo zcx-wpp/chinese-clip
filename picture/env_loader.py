@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 from .config import PICTURE_ROOT, WORKSPACE_ROOT
 

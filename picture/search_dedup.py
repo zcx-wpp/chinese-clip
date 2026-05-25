@@ -71,7 +71,10 @@ def dedupe_hits(
             if idx is None:
                 continue
             vec = l2_normalize(np.asarray(index.reconstruct(int(idx)), dtype=np.float32))
-            if kept_vectors and max(float(np.dot(vec, k)) for k in kept_vectors) >= similarity_threshold:
+            if (
+                kept_vectors
+                and max(float(np.dot(vec, k)) for k in kept_vectors) >= similarity_threshold
+            ):
                 continue
             kept_vectors.append(vec)
         else:

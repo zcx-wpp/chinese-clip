@@ -5,7 +5,6 @@ import io
 import re
 from pathlib import Path
 
-import numpy as np
 from PIL import Image
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
@@ -35,7 +34,9 @@ def _frame_indices(n_frames: int, *, max_frames: int = MAX_REPRESENTATION_FRAMES
     return sorted({0, n_frames // 2, n_frames - 1})
 
 
-def load_representation_frames(path: Path, *, max_frames: int = MAX_REPRESENTATION_FRAMES) -> list[Image.Image]:
+def load_representation_frames(
+    path: Path, *, max_frames: int = MAX_REPRESENTATION_FRAMES
+) -> list[Image.Image]:
     with Image.open(path) as img:
         n_frames = int(getattr(img, "n_frames", 1) or 1)
         if n_frames <= 1:

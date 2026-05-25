@@ -5,8 +5,8 @@
 ## 不会上传的内容（见 `.gitignore`）
 
 - `.env`、`.venv/`
-- `data/`、`project/models/`、`project/videos/`
-- `picture/profiles/`、`doubao_pipeline/profiles/`、`project/profiles/`（本地索引与 metadata.db）
+- `data/`、`video_retrieval/models/`、`video_retrieval/videos/`
+- `picture/profiles/`、`video_retrieval/profiles/`、`video_retrieval/legacy/`（本地索引与 metadata.db）
 - 各类 `*.faiss`、`*.npy`、模型权重
 
 ## 推荐步骤
@@ -17,8 +17,12 @@ cd /data/chuangxin.zhang/chinese_clip
 # 1. 检查状态（确认没有 .env / data / models）
 git status
 
-# 2. 只添加源码与脚本（可用下面脚本）
-bash scripts/git_add_source.sh
+# 2. 只添加源码与文档
+git add .gitignore docs/ README.md requirements.txt pyproject.toml
+git add picture/*.py video_retrieval/*.py
+git add video_retrieval/clip/ video_retrieval/hybrid/
+git add chinese_clip/environment.yml 2>/dev/null || true
+git add -u . 2>/dev/null || true
 
 # 3. 再次确认暂存列表
 git diff --cached --name-only | head -50
@@ -47,5 +51,5 @@ git push origin main
 
 ```bash
 git reset HEAD .env
-git rm -r --cached data/ project/models/ .venv/ 2>/dev/null || true
+git rm -r --cached data/ video_retrieval/models/ .venv/ 2>/dev/null || true
 ```

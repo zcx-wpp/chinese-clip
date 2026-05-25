@@ -4,7 +4,9 @@ import json
 import re
 from dataclasses import dataclass
 
-DEFAULT_IMAGE_CAPTION_PROMPT = "你将看到一张图片。请基于画面内容生成适合图片检索的结构化描述。使用简体中文。"
+DEFAULT_IMAGE_CAPTION_PROMPT = (
+    "你将看到一张图片。请基于画面内容生成适合图片检索的结构化描述。使用简体中文。"
+)
 STRUCTURED_OUTPUT_INSTRUCTIONS = (
     '请只输出 JSON：{"subject":"","color":"","action":"","style":"","description":""}。'
 )
@@ -57,6 +59,7 @@ def parse_structured_caption(text: str) -> StructuredImageCaption:
         raw = m.group(0)
         try:
             import json_repair
+
             payload = json_repair.loads(raw)
         except ImportError:
             try:

@@ -3,15 +3,13 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-import numpy as np
-
-from .encoder import ChineseClipEncoder
+from .encoder import ChineseClipEncoder, encode_pil_images
 from .faiss_store import PictureFaissIndex
 from .image_io import load_image_rgb
-from .metadata_store import PictureMetadataStore
 from .image_resolve import resolve_image_file
+from .metadata_store import PictureMetadataStore
 from .portable_paths import resolve_portable_path
-from .profile_paths import default_metadata_db_path, default_output_dir, resolve_path
+from .profile_paths import default_metadata_db_path, default_output_dir
 from .search_dedup import compute_fetch_k, dedupe_hits
 from .vector_utils import l2_normalize
 
@@ -39,7 +37,7 @@ class PictureRetriever:
         model_path: str,
         device: str = "cuda",
         batch_size: int = 16,
-    ) -> "PictureRetriever":
+    ) -> PictureRetriever:
         encoder = ChineseClipEncoder(model_path=model_path, device=device, batch_size=batch_size)
         index = PictureFaissIndex.load(
             output_dir / "faiss" / "image_index.faiss",
@@ -89,8 +87,7 @@ class PictureRetriever:
         dedupe_similarity: float = 0.99,
     ) -> tuple[list[dict], float]:
         image = load_image_rgb(source)
-        vectors = self.encoder.encode_images([image]).embeddings
-        query_vec = l2_normalize(vectors[0])
+        query_vec = l2_normalize(encode_pil_images(self.encoder, [image])[0])
         started = time.perf_counter()
         n = len(self.index.item_ids)
         fetch_k = compute_fetch_k(top_k, n) if dedupe else min(top_k, n)

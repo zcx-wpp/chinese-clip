@@ -9,7 +9,12 @@ from pathlib import Path
 
 import numpy as np
 
-from .config import DEFAULT_BGE_MODEL_NAME, DEFAULT_IMAGE_DIR, INDEX_KIND_CAPTION, PICTURE_BGE_MODEL_ENV
+from .config import (
+    DEFAULT_BGE_MODEL_NAME,
+    DEFAULT_IMAGE_DIR,
+    INDEX_KIND_CAPTION,
+    PICTURE_BGE_MODEL_ENV,
+)
 from .env_loader import env_first, load_default_dotenv_files
 from .image_io import image_id_from_path, iter_images, validate_image_decodable
 from .index_build import sync_faiss_index
@@ -62,7 +67,9 @@ def _run_mllm_phase(
         print("[mllm] no pending images (all captioned or done)", flush=True)
         return
 
-    print(f"[mllm] pending={len(jobs)} workers={workers} (API may take 10–120s per image)", flush=True)
+    print(
+        f"[mllm] pending={len(jobs)} workers={workers} (API may take 10–120s per image)", flush=True
+    )
 
     def _one(job: tuple[int, int, str, Path, str]) -> tuple[str, str | None, str | None]:
         n, tot, iid, path, rel = job
@@ -120,9 +127,9 @@ def _run_bge_phase(
     embedder,
     rebuild_faiss: bool,
 ) -> None:
-    rows = store.list_caption_done()
+    rows = store.list_needing_bge_embedding()
     if not rows:
-        print("[bge] no caption_done rows to embed", flush=True)
+        print("[bge] no rows need BGE embedding", flush=True)
         return
 
     texts = [str(r["caption_text"]) for r in rows]
@@ -130,8 +137,10 @@ def _run_bge_phase(
     print(f"[bge] encoding {len(texts)} passages ...", flush=True)
     vectors = embedder.encode_passages(texts, progress_desc="BGE")
     new_ids: list[str] = []
-    for iid, vec in zip(ids, vectors):
-        store.upsert_embedding(iid, embedding=l2_normalize(vec), embedding_model=embedder.model_name)
+    for iid, vec in zip(ids, vectors, strict=False):
+        store.upsert_embedding(
+            iid, embedding=l2_normalize(vec), embedding_model=embedder.model_name
+        )
         new_ids.append(iid)
     print(f"[bge] embedded {len(new_ids)}", flush=True)
 
@@ -164,9 +173,13 @@ def main():
     p.add_argument("--profile")
     p.add_argument("--force", action="store_true")
     p.add_argument("--retry-failed", action="store_true")
-    p.add_argument("--skip-mllm", action="store_true", help="Only BGE+faiss from existing caption_done.")
+    p.add_argument(
+        "--skip-mllm", action="store_true", help="Only BGE+faiss from existing caption_done."
+    )
     p.add_argument("--limit", type=int, default=0)
-    p.add_argument("--workers", type=int, default=2, help="Parallel MLLM API calls (mind rate limits).")
+    p.add_argument(
+        "--workers", type=int, default=2, help="Parallel MLLM API calls (mind rate limits)."
+    )
     p.add_argument("--rebuild-faiss", action="store_true")
     p.add_argument("--bge-device", default="cuda")
     args = p.parse_args()
@@ -197,7 +210,7 @@ def main():
         )
 
     print("[text_ingest] phase 2/2: loading BGE (after MLLM)", flush=True)
-    from doubao_pipeline.dense_embeddings import HuggingFaceBgeTextEmbedder
+    from video_retrieval.hybrid.dense_embeddings import HuggingFaceBgeTextEmbedder
 
     embedder = HuggingFaceBgeTextEmbedder(
         model_name=env_first(PICTURE_BGE_MODEL_ENV) or DEFAULT_BGE_MODEL_NAME,
@@ -205,7 +218,9 @@ def main():
         local_files_only=bool(os.environ.get("HF_LOCAL_FILES_ONLY")),
     )
     embedder.save(out_dir / "bge_embedder")
-    _run_bge_phase(store=store, out_dir=out_dir, embedder=embedder, rebuild_faiss=args.rebuild_faiss)
+    _run_bge_phase(
+        store=store, out_dir=out_dir, embedder=embedder, rebuild_faiss=args.rebuild_faiss
+    )
 
     store.close()
     print("[text_ingest] all done", flush=True)

@@ -47,10 +47,21 @@ class PictureMetadataStore:
         with self._lock:
             return self.conn.execute(sql, params).fetchall()
 
-    def upsert_image(self, *, image_id: str, path: str, width=None, height=None,
-                     embedding_path=None, embedding_norm=None, status="done",
-                     error_message=None, updated_at=None) -> None:
+    def upsert_image(
+        self,
+        *,
+        image_id: str,
+        path: str,
+        width=None,
+        height=None,
+        embedding_path=None,
+        embedding_norm=None,
+        status="done",
+        error_message=None,
+        updated_at=None,
+    ) -> None:
         from datetime import datetime, timezone
+
         ts = updated_at or datetime.now(timezone.utc).isoformat()
         self._run(
             """
@@ -62,12 +73,24 @@ class PictureMetadataStore:
                 embedding_path=excluded.embedding_path, embedding_norm=excluded.embedding_norm,
                 status=excluded.status, error_message=excluded.error_message, updated_at=excluded.updated_at
             """,
-            (image_id, path, width, height, embedding_path, embedding_norm, status, error_message, ts),
+            (
+                image_id,
+                path,
+                width,
+                height,
+                embedding_path,
+                embedding_norm,
+                status,
+                error_message,
+                ts,
+            ),
             commit=True,
         )
 
     def mark_failed(self, image_id: str, path: str, error_message: str) -> None:
-        self.upsert_image(image_id=image_id, path=path, status="failed", error_message=error_message)
+        self.upsert_image(
+            image_id=image_id, path=path, status="failed", error_message=error_message
+        )
 
     def get_status(self, image_id: str) -> str | None:
         row = self._fetchone("SELECT status FROM images WHERE image_id = ?", (image_id,))

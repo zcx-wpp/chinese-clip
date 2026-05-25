@@ -51,29 +51,25 @@ eval_results/
 cleaned_muge_sample.jsonl
 cleaned_muge_with_negatives.jsonl
 
-# project: generated outputs, indexes, videos
-project/output/
-project/profiles/
-project/videos/
-project/videos_eval500/
-project/videos_single_fix/
-project/videos_subset_500/
-project/metadata/metadata.db
-project/metadata/metadata.db-*
+# removed: project/ doubao_pipeline/ (see docs/MIGRATION.md)
 
-# Local model weights
+# Local model weights (repo-root model/ fallback)
 model/.msc
 model/.mv
 model/*.pt
 model/*.bin
-project/models/
-project/models/**
 
 # picture: local FAISS / embeddings / DB (code under picture/*.py is tracked)
 picture/profiles/
 
-# doubao_pipeline: local hybrid indexes and DB (Python package code is tracked)
-doubao_pipeline/profiles/
+# video_retrieval: models, indexes, legacy profiles, artifacts
+video_retrieval/models/
+video_retrieval/models/**
+video_retrieval/profiles/
+video_retrieval/legacy/
+video_retrieval/artifacts/
+video_retrieval/videos/
+video_retrieval/hybrid/output/
 
 # Binary / vector artifacts (regenerate locally)
 *.ckpt

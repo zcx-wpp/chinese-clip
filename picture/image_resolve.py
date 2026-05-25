@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 from .portable_paths import resolve_portable_path
@@ -32,10 +33,8 @@ def resolve_image_file(
                 candidates.append(root / name)
 
     if raw:
-        try:
+        with contextlib.suppress(Exception):
             candidates.append(resolve_portable_path(raw))
-        except Exception:
-            pass
 
     seen: set[str] = set()
     for path in candidates:

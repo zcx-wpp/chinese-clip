@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 
 from .config import DEFAULT_IMAGE_DIR, DEFAULT_MODEL_PATH, INDEX_KIND
 from .encoder import ChineseClipEncoder, encode_image_path_pooled
-from .image_io import image_id_from_path, iter_images, safe_embedding_filename, validate_image_decodable
+from .image_io import (
+    image_id_from_path,
+    iter_images,
+    safe_embedding_filename,
+    validate_image_decodable,
+)
 from .index_build import sync_faiss_index
 from .metadata_store import PictureMetadataStore
 from .profile_paths import default_metadata_db_path, default_output_dir, resolve_path
@@ -63,7 +67,9 @@ def main():
         paths = paths[: args.limit]
 
     store = PictureMetadataStore(db_path)
-    encoder = ChineseClipEncoder(model_path=args.model_path, device=args.device, batch_size=args.batch_size)
+    encoder = ChineseClipEncoder(
+        model_path=args.model_path, device=args.device, batch_size=args.batch_size
+    )
 
     pending = []
     for p in paths:
@@ -87,14 +93,20 @@ def main():
             emb_name = safe_embedding_filename(iid) + ".npy"
             np.save(emb_dir / emb_name, vector)
             (emb_dir / (safe_embedding_filename(iid) + ".json")).write_text(
-                json.dumps({"image_id": iid, "path": rel, "index_kind": INDEX_KIND}, ensure_ascii=False),
+                json.dumps(
+                    {"image_id": iid, "path": rel, "index_kind": INDEX_KIND}, ensure_ascii=False
+                ),
                 encoding="utf-8",
             )
             w, h = size or (None, None)
             store.upsert_image(
-                image_id=iid, path=rel, width=w, height=h,
+                image_id=iid,
+                path=rel,
+                width=w,
+                height=h,
                 embedding_path=str((emb_dir / emb_name).relative_to(output_dir).as_posix()),
-                embedding_norm=float(norm), status="done",
+                embedding_norm=float(norm),
+                status="done",
             )
             new_ids.append(iid)
             print(f"[done] {iid}", flush=True)

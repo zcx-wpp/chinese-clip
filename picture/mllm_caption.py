@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import base64
 import io
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from openai import OpenAI
 from PIL import Image
 
-from .caption_schema import StructuredImageCaption, build_structured_prompt, parse_structured_caption
+from .caption_schema import (
+    StructuredImageCaption,
+    build_structured_prompt,
+    parse_structured_caption,
+)
 from .config import (
     DEFAULT_MLLM_BASE_URL,
     FALLBACK_MLLM_API_KEY_ENV,
@@ -46,16 +49,22 @@ class MllmCaptionConfig:
 def resolve_mllm_config(**kw) -> MllmCaptionConfig:
     load_default_dotenv_files()
     key = kw.get("api_key") or env_first(PICTURE_MLLM_API_KEY_ENV, FALLBACK_MLLM_API_KEY_ENV)
-    model = kw.get("model") or env_first(PICTURE_MLLM_MODEL_ENV, FALLBACK_MLLM_MODEL_ENV, LEGACY_MLLM_MODEL_ENV)
+    model = kw.get("model") or env_first(
+        PICTURE_MLLM_MODEL_ENV, FALLBACK_MLLM_MODEL_ENV, LEGACY_MLLM_MODEL_ENV
+    )
     if not key or not model:
         raise RuntimeError("Missing MLLM API key/model in .env")
-    return MllmCaptionConfig(api_key=key, model=model, base_url=kw.get("base_url") or DEFAULT_MLLM_BASE_URL)
+    return MllmCaptionConfig(
+        api_key=key, model=model, base_url=kw.get("base_url") or DEFAULT_MLLM_BASE_URL
+    )
 
 
 class ImageMllmCaptioner:
     def __init__(self, config: MllmCaptionConfig):
         self.config = config
-        self.client = OpenAI(api_key=config.api_key, base_url=config.base_url, timeout=config.timeout_seconds)
+        self.client = OpenAI(
+            api_key=config.api_key, base_url=config.base_url, timeout=config.timeout_seconds
+        )
 
     def caption_image_path(self, path: Path) -> StructuredImageCaption:
         with Image.open(path) as img:
@@ -86,13 +95,15 @@ class ImageMllmCaptioner:
         if self.config.api_mode == "responses":
             response = self.client.responses.create(
                 model=self.config.model,
-                input=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "input_text", "text": prompt},
-                        {"type": "input_image", "image_url": data_url},
-                    ],
-                }],
+                input=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "input_text", "text": prompt},
+                            {"type": "input_image", "image_url": data_url},
+                        ],
+                    }
+                ],
                 temperature=self.config.temperature,
                 max_output_tokens=self.config.max_tokens,
             )
@@ -103,10 +114,15 @@ class ImageMllmCaptioner:
 
         r = self.client.chat.completions.create(
             model=self.config.model,
-            messages=[{"role": "user", "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": data_url}},
-            ]}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }
+            ],
             temperature=self.config.temperature,
             max_tokens=self.config.max_tokens,
         )
